@@ -1,0 +1,31 @@
+{
+    "defaultPrinter": "TERMICA",
+    "renderer": "local",
+    "autoPrint": true,
+    "shopeeRasterScale": 3,
+    "workspace": "./data",
+    "labelProfiles": {
+        "marketplace_10x15": {
+            "name": "Marketplace 10×15cm",
+            "widthMm": 100,
+            "heightMm": 150,
+            "dpi": 203,
+            "description": "Marketplace labels (Shopee, Mercado Livre)"
+        },
+        "mlb_40x25": {
+            "name": "MLB 40×25mm",
+            "widthMm": 40,
+            "heightMm": 25,
+            "dpi": 203,
+            "description": "Mercado Libre small label"
+        },
+        "default": {
+            "name": "Default Profile",
+            "widthMm": 101.6,
+            "heightMm": 152.4,
+            "dpi": 203,
+            "description": "4×6 inch standard"
+        }
+    },
+    "autoDetectProfile": true
+}

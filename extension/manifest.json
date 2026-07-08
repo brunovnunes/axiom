@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Axiom Printer Extension",
+  "version": "1.0.0",
+  "description": "Intercepts marketplace labels and sends them to the local Axiom Printer Agent.",
+  "permissions": [
+    "downloads",
+    "storage",
+    "scripting"
+  ],
+  "options_page": "src/options.html",
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "http://*/*",
+    "https://*/*",
+    "*://*.shopee.com.br/*",
+    "*://*.mercadolivre.com.br/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.shopee.com.br/*", "*://*.mercadolivre.com.br/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "Axiom Printer Agent",
+    "default_popup": "src/popup.html"
+  },
+  "icons": {
+    "198": "icon.png"
+  }
+}

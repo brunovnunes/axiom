@@ -1,0 +1,18 @@
+# Dados locais e testes
+data/
+data-test/
+
+# Dependências comuns de JavaScript
+node_modules/
+.pnpm-store/
+
+# Arquivos de ambiente e segredos
+.env
+.env.local
+.env.*.local
+
+# Pastas de build e logs
+dist/
+build/
+*.log
+.eslintcache
