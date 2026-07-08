@@ -70,7 +70,7 @@ export class ConvertStep implements PipelineStep {
         const renderer = new LocalRenderer();
         const renderOptions: MultiPageRenderOptions = {
           profile,
-          renderMultiPage: true,
+          renderMultiPage: true, // Enable multi-page rendering
         };
         const pdfBuffer = await renderer.render(zplContent, renderOptions);
         

@@ -3,7 +3,7 @@ import { LocalRenderer } from './LocalRenderer.js';
 
 /**
  * Backward-compatible wrapper kept only for older tests/imports.
- * The project renders locally using `LocalRenderer`.
+ * The project now renders locally and does not call Labelary.
  */
 export class LabelaryRenderer implements LabelRenderer {
   async render(zpl: string, options?: RenderOptions): Promise<Buffer> {
