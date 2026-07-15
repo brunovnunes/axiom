@@ -8,7 +8,7 @@ import {
 } from '../../config/LabelProfile.js';
 import { zpl2svg } from 'zpl2svg';
 import SVGtoPDF from 'svg-to-pdfkit';
-import { inflateSync } from 'node:zlib';
+import { inflateSync, deflateSync } from 'node:zlib';
 
 type ParsedGrf = {
   totalBytes: number;
@@ -63,6 +63,7 @@ export class LocalRenderer implements LabelRenderer {
           size: [widthPt, heightPt],
           margin: 0,
           autoFirstPage: true,
+          // @ts-ignore: autoPageBreak is valid in PDFKit but missing in some versions of @types/pdfkit
           autoPageBreak: false,
         });
 
@@ -164,39 +165,74 @@ export class LocalRenderer implements LabelRenderer {
     const xOffsetDots = posMatch ? Number(posMatch[1]) : 0;
     const yOffsetDots = posMatch ? Number(posMatch[2]) : 0;
 
-    const pxW = pointPerDot;
-    const pxH = pointPerDot;
+    const pxW = widthDots * pointPerDot;
+    const pxH = heightDots * pointPerDot;
     const xBase = xOffsetDots * pointPerDot;
     const yBase = yOffsetDots * pointPerDot;
 
-    doc.save();
-    doc.fillColor('black');
-
-    for (let row = 0; row < heightDots; row++) {
-      const rowStart = row * graphic.bytesPerRow;
-      let runStart = -1;
-
-      for (let col = 0; col < widthDots; col++) {
-        const byteIndex = rowStart + (col >> 3);
-        const bitMask = 0x80 >> (col & 7);
+    // Build raw RGBA PNG manually to avoid broken dependencies (canvas/pngjs)
+    
+    const pixels = new Uint8Array(widthDots * heightDots * 4);
+    for (let y = 0; y < heightDots; y++) {
+      const rowStart = y * graphic.bytesPerRow;
+      for (let x = 0; x < widthDots; x++) {
+        const byteIndex = rowStart + (x >> 3);
+        const bitMask = 0x80 >> (x & 7);
         const isBlack = byteIndex < graphic.bitmap.length && (graphic.bitmap[byteIndex] & bitMask) !== 0;
-
-        if (isBlack && runStart < 0) {
-          runStart = col;
-        }
-
-        const runEnded = !isBlack && runStart >= 0;
-        const atLineEnd = col === widthDots - 1;
-
-        if (runEnded || (atLineEnd && runStart >= 0)) {
-          const runEnd = runEnded ? col : col + 1;
-          const runLen = runEnd - runStart;
-          doc.rect(xBase + runStart * pxW, yBase + row * pxH, runLen * pxW, pxH).fill();
-          runStart = -1;
-        }
+        const offset = (y * widthDots + x) * 4;
+        const color = isBlack ? 0 : 255;
+        pixels[offset] = color;
+        pixels[offset + 1] = color;
+        pixels[offset + 2] = color;
+        pixels[offset + 3] = 255; // Alpha
       }
     }
 
-    doc.restore();
+    const scanlines = new Uint8Array(heightDots * (widthDots * 4 + 1));
+    for (let y = 0; y < heightDots; y++) {
+      scanlines[y * (widthDots * 4 + 1)] = 0; // Filter type: None
+      scanlines.set(pixels.subarray(y * widthDots * 4, (y + 1) * widthDots * 4), y * (widthDots * 4 + 1) + 1);
+    }
+
+    const idatData = deflateSync(scanlines);
+
+    const chunks: Buffer[] = [];
+    chunks.push(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])); // PNG Signature
+
+    const writeChunk = (type: string, data: Buffer) => {
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(data.length, 0);
+      const typeBuf = Buffer.from(type, 'ascii');
+      
+      const crcBuf = Buffer.concat([typeBuf, data]);
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < crcBuf.length; i++) {
+        crc ^= crcBuf[i];
+        for (let j = 0; j < 8; j++) {
+          crc = (crc & 1) ? (crc >>> 1) ^ 0xEDB88320 : crc >>> 1;
+        }
+      }
+      crc ^= 0xFFFFFFFF;
+      
+      const crcOut = Buffer.alloc(4);
+      crcOut.writeUInt32BE(crc >>> 0, 0);
+      
+      chunks.push(length, typeBuf, data, crcOut);
+    };
+
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(widthDots, 0);
+    ihdr.writeUInt32BE(heightDots, 4);
+    ihdr[8] = 8; // Bit depth
+    ihdr[9] = 6; // Color type (RGBA)
+    ihdr[10] = 0; // Compression
+    ihdr[11] = 0; // Filter
+    ihdr[12] = 0; // Interlace
+    writeChunk('IHDR', ihdr);
+    writeChunk('IDAT', idatData);
+    writeChunk('IEND', Buffer.alloc(0));
+
+    const pngBuffer = Buffer.concat(chunks);
+    doc.image(pngBuffer, xBase, yBase, { width: pxW, height: pxH });
   }
 }
