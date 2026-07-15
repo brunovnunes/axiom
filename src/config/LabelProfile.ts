@@ -115,5 +115,18 @@ export function splitLabelDocuments(zpl: string): string[] {
     documents.push(current.trim());
   }
 
-  return documents.filter(doc => doc.length > 0);
+  return documents.filter(doc => {
+    if (doc.trim().length === 0) return false;
+    
+    // Filter out purely utility/cleanup labels (like those only containing ^ID)
+    // to prevent blank PDF pages.
+    const stripped = doc
+      .replace(/\^XA/gi, '')
+      .replace(/\^XZ/gi, '')
+      .replace(/\^ID[^^\s]+/gi, '')
+      .replace(/\^FS/gi, '')
+      .trim();
+      
+    return stripped.length > 0;
+  });
 }

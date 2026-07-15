@@ -62,6 +62,8 @@ export class LocalRenderer implements LabelRenderer {
         const doc = new PDFDocument({
           size: [widthPt, heightPt],
           margin: 0,
+          autoFirstPage: true,
+          autoPageBreak: false,
         });
 
         const chunks: Buffer[] = [];

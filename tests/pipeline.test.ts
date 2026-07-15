@@ -44,6 +44,7 @@ describe('Job Pipeline Integration', () => {
         labelary: { baseUrl: 'http://mock-labelary' },
       }),
       loadConfig: () => ({}),
+      getLabelProfiles: () => ({}),
     }));
 
     initDb();
