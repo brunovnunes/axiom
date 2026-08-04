@@ -49,6 +49,13 @@ async function start() {
     await fastify.listen({ port, host: '0.0.0.0' });
     
     fastify.log.info(`Axiom Printer Agent API running on http://localhost:${port}/api`);
+
+    // Start Print Node client if applicable
+    if (config.role === 'print_node' || config.role === 'standalone') {
+      const { printNodeClient } = await import('../core/PrintNodeClient.js');
+      printNodeClient.start();
+      fastify.log.info(`PrintNodeClient started in ${config.role} mode.`);
+    }
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

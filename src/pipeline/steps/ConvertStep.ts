@@ -61,10 +61,17 @@ export class ConvertStep implements PipelineStep {
           }
         }
 
-        // If no profile detected, use default or marketplace profile
+        // If no profile detected, use heuristic based on original filename or file content, or fallback to default
         if (!profile) {
-          profile = labelProfiles['marketplace_10x15'] || labelProfiles['default'];
-          await logJob(context.jobId, `Using default label profile`);
+          const lowerName = job.originalName.toLowerCase();
+          const hasMlSku = zplContent.includes('^FDSKU: MLB');
+          if (lowerName.includes('etiquetas-de-produtos') || lowerName.includes('80x25') || hasMlSku) {
+            profile = labelProfiles['mlb_80x25'] || labelProfiles['default'];
+            await logJob(context.jobId, `Auto-detected 80x25 label profile from filename or content`);
+          } else {
+            profile = labelProfiles['marketplace_10x15'] || labelProfiles['default'];
+            await logJob(context.jobId, `Using default label profile (10x15)`);
+          }
         }
 
         const renderer = new LocalRenderer();

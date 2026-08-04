@@ -8,6 +8,7 @@ export const jobStatuses = [
   'DETECTING',
   'TRANSFORMING',
   'CONVERTING',
+  'READY_TO_PRINT',
   'PRINTING',
   'COMPLETED',
   'FAILED'

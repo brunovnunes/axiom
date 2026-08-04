@@ -78,7 +78,22 @@ export class PrintStep implements PipelineStep {
       // If this is a preview-only job, skip actual printing
       if (job.destinationPrinter === '__PREVIEW__') {
         await logJob(context.jobId, `Preview job - skipping physical print.`);
-      } else {
+        
+        await db.update(jobs)
+          .set({ status: 'COMPLETED', updatedAt: new Date() })
+          .where(eq(jobs.id, context.jobId));
+        await logJob(context.jobId, `Job completed successfully`);
+        return context;
+      }
+
+      if (config.role === 'orchestrator') {
+        await logJob(context.jobId, `Role is orchestrator. Job marked as READY_TO_PRINT for nodes to pick up.`);
+        await db.update(jobs)
+          .set({ status: 'READY_TO_PRINT', updatedAt: new Date() })
+          .where(eq(jobs.id, context.jobId));
+        return context;
+      }
+
       const printerBackend = await getPrinterBackend();
       const targetPrinter = job.destinationPrinter || config.defaultPrinter;
       
@@ -90,7 +105,6 @@ export class PrintStep implements PipelineStep {
       } catch (err: any) {
         await logJob(context.jobId, `Failed to print document: ${err.message}`, 'error');
         throw err;
-      }
       }
     } else {
       await logJob(context.jobId, `Auto-print is disabled. Skipped sending document to system printer.`);

@@ -70,12 +70,22 @@ export async function routes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /printers - List available printers
+  // GET /printers - List available printers (local + node registered)
   fastify.get('/printers', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const printerBackend = await getPrinterBackend();
-      const printers = await printerBackend.listPrinters();
-      return reply.send({ printers });
+      const localPrinters = await printerBackend.listPrinters();
+      const nodePrinters = (global as any).registeredNodePrinters || [];
+      
+      // Merge unique printers
+      const allPrinters = [...localPrinters];
+      for (const np of nodePrinters) {
+        if (!allPrinters.find(p => p.name === np.name)) {
+          allPrinters.push({ ...np, isNodePrinter: true });
+        }
+      }
+
+      return reply.send({ printers: allPrinters });
     } catch (err: any) {
       return reply.status(500).send({ error: 'Failed to list printers', details: err.message });
     }
@@ -156,9 +166,90 @@ export async function routes(fastify: FastifyInstance) {
         });
       }
 
-      return reply.send({ outputs: results });
+      const parentStatus = await jobManager.getJobStatus(id);
+      const complete = parentStatus ? (parentStatus.status === 'COMPLETED' || parentStatus.status === 'FAILED') : false;
+
+      return reply.send({ outputs: results, complete });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
+  });
+
+  // POST /printers/register - For Print Nodes to register their printers with the Orchestrator
+  fastify.post('/printers/register', async (request: FastifyRequest, reply: FastifyReply) => {
+    // Note: In a full implementation, you would store these printers in DB/Memory associated with the Node ID.
+    // For now, we can just accept it or mock storing it.
+    const body: any = request.body;
+    if (body && body.printers) {
+      // In standalone/orchestrator, we could update a global registry.
+      // We'll trust the latest registration.
+      (global as any).registeredNodePrinters = body.printers;
+      return reply.send({ success: true, registered: body.printers.length });
+    }
+    return reply.status(400).send({ error: 'Invalid payload' });
+  });
+
+  // GET /printers/node - Get registered printers from nodes
+  fastify.get('/printers/node', async (request: FastifyRequest, reply: FastifyReply) => {
+    const printers = (global as any).registeredNodePrinters || [];
+    return reply.send({ printers });
+  });
+
+  // GET /jobs/pending-print - For Print Nodes to fetch jobs that are READY_TO_PRINT
+  fastify.get('/jobs/pending-print', async (request: FastifyRequest, reply: FastifyReply) => {
+    const db = getDb();
+    const pending = await db.select().from(jobs)
+      .where(eq(jobs.status, 'READY_TO_PRINT'))
+      .orderBy(jobs.createdAt)
+      .limit(10);
+      
+    // Send only the necessary info
+    const jobsToSend = pending.map(j => {
+      const dirs = ensureJobDirs(j.id);
+      let pdfBase64 = null;
+      let filename = 'rendered_label.pdf';
+      const pdfPath = path.join(dirs.processed, 'rendered_label.pdf');
+      
+      if (fs.existsSync(pdfPath)) {
+        pdfBase64 = fs.readFileSync(pdfPath).toString('base64');
+      } else {
+        // Look in output
+        const outputFiles = fs.existsSync(dirs.output) ? fs.readdirSync(dirs.output) : [];
+        if (outputFiles.length > 0) {
+          const outPath = path.join(dirs.output, outputFiles[0]);
+          pdfBase64 = fs.readFileSync(outPath).toString('base64');
+          filename = outputFiles[0];
+        }
+      }
+
+      return {
+        id: j.id,
+        destinationPrinter: j.destinationPrinter,
+        originalName: j.originalName,
+        filename,
+        pdfBase64
+      };
+    }).filter(j => j.pdfBase64 !== null);
+
+    return reply.send({ jobs: jobsToSend });
+  });
+
+  // POST /jobs/:id/printed - For Print Nodes to acknowledge successful printing
+  fastify.post('/jobs/:id/printed', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const { id } = request.params;
+    const body: any = request.body || {};
+    const db = getDb();
+    
+    if (body.error) {
+      await db.update(jobs)
+        .set({ status: 'FAILED', error: body.error, updatedAt: new Date() })
+        .where(eq(jobs.id, id));
+    } else {
+      await db.update(jobs)
+        .set({ status: 'COMPLETED', updatedAt: new Date() })
+        .where(eq(jobs.id, id));
+    }
+    
+    return reply.send({ success: true });
   });
 }

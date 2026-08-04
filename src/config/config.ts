@@ -12,6 +12,8 @@ const LabelProfileSchema = z.object({
 });
 
 export const ConfigSchema = z.object({
+  role: z.enum(['orchestrator', 'print_node', 'standalone']).default('standalone'),
+  orchestratorUrl: z.string().default('http://localhost:3000'),
   defaultPrinter: z.string().default(''),
   renderer: z.enum(['local']).default('local'),
   autoPrint: z.boolean().default(true),
@@ -32,6 +34,23 @@ export function loadConfig(configPath = 'config.json'): Config {
     // Generate default configuration file
     const defaultConfig = ConfigSchema.parse({});
     fs.writeFileSync(resolvedPath, JSON.stringify(defaultConfig, null, 4), 'utf-8');
+    
+    // Override role if CLI arguments are provided
+    const args = process.argv.slice(2);
+    if (args.includes('--orchestrator')) {
+      defaultConfig.role = 'orchestrator';
+    } else if (args.includes('--standalone')) {
+      defaultConfig.role = 'standalone';
+    } else if (args.includes('--print-node') || args.includes('--node')) {
+      defaultConfig.role = 'print_node';
+    }
+
+    // Check for --url or --orchestrator-url
+    const urlIndex = args.findIndex(arg => arg === '--url' || arg === '--orchestrator-url');
+    if (urlIndex !== -1 && args.length > urlIndex + 1) {
+      defaultConfig.orchestratorUrl = args[urlIndex + 1];
+    }
+
     currentConfig = defaultConfig;
     return defaultConfig;
   }
@@ -40,11 +59,45 @@ export function loadConfig(configPath = 'config.json'): Config {
     const rawData = fs.readFileSync(resolvedPath, 'utf-8');
     const parsedData = JSON.parse(rawData);
     const validated = ConfigSchema.parse(parsedData);
+    
+    // Override role if CLI arguments are provided
+    const args = process.argv.slice(2);
+    if (args.includes('--orchestrator')) {
+      validated.role = 'orchestrator';
+    } else if (args.includes('--standalone')) {
+      validated.role = 'standalone';
+    } else if (args.includes('--print-node') || args.includes('--node')) {
+      validated.role = 'print_node';
+    }
+    
+    // Check for --url or --orchestrator-url
+    const urlIndex = args.findIndex(arg => arg === '--url' || arg === '--orchestrator-url');
+    if (urlIndex !== -1 && args.length > urlIndex + 1) {
+      validated.orchestratorUrl = args[urlIndex + 1];
+    }
+    
     currentConfig = validated;
     return validated;
   } catch (error) {
     console.error(`Failed to load config from ${resolvedPath}, falling back to defaults:`, error);
     const fallback = ConfigSchema.parse({});
+    
+    // Override role if CLI arguments are provided
+    const args = process.argv.slice(2);
+    if (args.includes('--orchestrator')) {
+      fallback.role = 'orchestrator';
+    } else if (args.includes('--standalone')) {
+      fallback.role = 'standalone';
+    } else if (args.includes('--print-node') || args.includes('--node')) {
+      fallback.role = 'print_node';
+    }
+
+    // Check for --url or --orchestrator-url
+    const urlIndex = args.findIndex(arg => arg === '--url' || arg === '--orchestrator-url');
+    if (urlIndex !== -1 && args.length > urlIndex + 1) {
+      fallback.orchestratorUrl = args[urlIndex + 1];
+    }
+
     currentConfig = fallback;
     return fallback;
   }
