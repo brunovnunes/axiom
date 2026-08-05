@@ -4,8 +4,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+function getLocalIp(): string {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
 export class PrintNodeClient {
   private orchestratorUrl: string;
+  private nodeUrl: string;
   private isRunning: boolean = false;
   private syncInterval: NodeJS.Timeout | null = null;
   private processingJobs: Set<string> = new Set();
@@ -13,22 +26,28 @@ export class PrintNodeClient {
   constructor() {
     const config = getConfig();
     this.orchestratorUrl = config.orchestratorUrl.replace(/\/$/, '');
+    if (config.nodeUrl) {
+      this.nodeUrl = config.nodeUrl.replace(/\/$/, '');
+    } else {
+      const localIp = getLocalIp();
+      this.nodeUrl = `http://${localIp}:3000`;
+    }
   }
 
   public start() {
     if (this.isRunning) return;
     this.isRunning = true;
-    console.log(`[PrintNode] Started. Orchestrator URL: ${this.orchestratorUrl}`);
+    console.log(`[PrintNode] Started. Orchestrator URL: ${this.orchestratorUrl} | Self Node URL: ${this.nodeUrl}`);
     
     // Initial sync
     this.syncPrinters();
     this.pollJobs();
 
-    // Setup periodic polling
+    // Heartbeat every 30 seconds (registers printers and acts as fallback poll)
     this.syncInterval = setInterval(() => {
       this.syncPrinters();
       this.pollJobs();
-    }, 10000); // every 10 seconds
+    }, 30000);
   }
 
   public stop() {
@@ -48,7 +67,10 @@ export class PrintNodeClient {
       const res = await fetch(`${this.orchestratorUrl}/api/printers/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printers })
+        body: JSON.stringify({
+          printers,
+          nodeUrl: this.nodeUrl
+        })
       });
       
       if (!res.ok) {

@@ -7,6 +7,7 @@ import { jobs } from '../database/schema.js';
 import { desc } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { ensureJobDirs } from '../storage/Workspace.js';
 import { eq } from 'drizzle-orm';
 
@@ -177,13 +178,30 @@ export async function routes(fastify: FastifyInstance) {
 
   // POST /printers/register - For Print Nodes to register their printers with the Orchestrator
   fastify.post('/printers/register', async (request: FastifyRequest, reply: FastifyReply) => {
-    // Note: In a full implementation, you would store these printers in DB/Memory associated with the Node ID.
-    // For now, we can just accept it or mock storing it.
     const body: any = request.body;
     if (body && body.printers) {
-      // In standalone/orchestrator, we could update a global registry.
-      // We'll trust the latest registration.
-      (global as any).registeredNodePrinters = body.printers;
+      const nodeUrl = body.nodeUrl || '';
+      const registeredNodes: Array<{ nodeUrl: string; printers: any[]; lastSeen: number }> = (global as any).registeredNodes || [];
+      
+      // Update or add node entry
+      const existingIdx = registeredNodes.findIndex(n => n.nodeUrl === nodeUrl);
+      const entry = { nodeUrl, printers: body.printers, lastSeen: Date.now() };
+      if (existingIdx !== -1) {
+        registeredNodes[existingIdx] = entry;
+      } else {
+        registeredNodes.push(entry);
+      }
+      (global as any).registeredNodes = registeredNodes;
+
+      // Keep legacy array updated for backward compatibility
+      const allNodePrinters: any[] = [];
+      for (const node of registeredNodes) {
+        for (const p of node.printers) {
+          allNodePrinters.push({ ...p, nodeUrl: node.nodeUrl });
+        }
+      }
+      (global as any).registeredNodePrinters = allNodePrinters;
+
       return reply.send({ success: true, registered: body.printers.length });
     }
     return reply.status(400).send({ error: 'Invalid payload' });
@@ -193,6 +211,38 @@ export async function routes(fastify: FastifyInstance) {
   fastify.get('/printers/node', async (request: FastifyRequest, reply: FastifyReply) => {
     const printers = (global as any).registeredNodePrinters || [];
     return reply.send({ printers });
+  });
+
+  // POST /node/print - Endpoint on Node to receive direct push print requests from Orchestrator
+  fastify.post('/node/print', async (request: FastifyRequest, reply: FastifyReply) => {
+    const body: any = request.body || {};
+    const { id, destinationPrinter, filename, pdfBase64, originalName } = body;
+    
+    if (!pdfBase64) {
+      return reply.status(400).send({ error: 'pdfBase64 is required' });
+    }
+
+    const tempDir = os.tmpdir();
+    const tempPath = path.join(tempDir, `push_${id || Date.now()}_${filename || 'label.pdf'}`);
+    
+    try {
+      const buffer = Buffer.from(pdfBase64, 'base64');
+      fs.writeFileSync(tempPath, buffer);
+
+      if (destinationPrinter !== '__PREVIEW__') {
+        const backend = await getPrinterBackend();
+        await backend.print(tempPath, { printerName: destinationPrinter });
+      }
+
+      return reply.send({ success: true, jobId: id });
+    } catch (err: any) {
+      fastify.log.error(`Direct print failed for job ${id}: ${err.message}`);
+      return reply.status(500).send({ error: err.message });
+    } finally {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+    }
   });
 
   // GET /jobs/pending-print - For Print Nodes to fetch jobs that are READY_TO_PRINT

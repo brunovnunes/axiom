@@ -14,6 +14,7 @@ const LabelProfileSchema = z.object({
 export const ConfigSchema = z.object({
   role: z.enum(['orchestrator', 'print_node', 'standalone']).default('standalone'),
   orchestratorUrl: z.string().default('http://localhost:3000'),
+  nodeUrl: z.string().optional(),
   defaultPrinter: z.string().default(''),
   renderer: z.enum(['local']).default('local'),
   autoPrint: z.boolean().default(true),
@@ -51,6 +52,11 @@ export function loadConfig(configPath = 'config.json'): Config {
       defaultConfig.orchestratorUrl = args[urlIndex + 1];
     }
 
+    const nodeUrlIndex = args.findIndex(arg => arg === '--node-url');
+    if (nodeUrlIndex !== -1 && args.length > nodeUrlIndex + 1) {
+      defaultConfig.nodeUrl = args[nodeUrlIndex + 1];
+    }
+
     currentConfig = defaultConfig;
     return defaultConfig;
   }
@@ -76,6 +82,11 @@ export function loadConfig(configPath = 'config.json'): Config {
       validated.orchestratorUrl = args[urlIndex + 1];
     }
     
+    const nodeUrlIndex = args.findIndex(arg => arg === '--node-url');
+    if (nodeUrlIndex !== -1 && args.length > nodeUrlIndex + 1) {
+      validated.nodeUrl = args[nodeUrlIndex + 1];
+    }
+    
     currentConfig = validated;
     return validated;
   } catch (error) {
@@ -96,6 +107,11 @@ export function loadConfig(configPath = 'config.json'): Config {
     const urlIndex = args.findIndex(arg => arg === '--url' || arg === '--orchestrator-url');
     if (urlIndex !== -1 && args.length > urlIndex + 1) {
       fallback.orchestratorUrl = args[urlIndex + 1];
+    }
+
+    const nodeUrlIndex = args.findIndex(arg => arg === '--node-url');
+    if (nodeUrlIndex !== -1 && args.length > nodeUrlIndex + 1) {
+      fallback.nodeUrl = args[nodeUrlIndex + 1];
     }
 
     currentConfig = fallback;

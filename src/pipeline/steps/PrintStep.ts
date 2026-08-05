@@ -87,7 +87,50 @@ export class PrintStep implements PipelineStep {
       }
 
       if (config.role === 'orchestrator') {
-        await logJob(context.jobId, `Role is orchestrator. Job marked as READY_TO_PRINT for nodes to pick up.`);
+        const targetPrinter = job.destinationPrinter || config.defaultPrinter;
+        const registeredNodes: Array<{ nodeUrl: string; printers: any[] }> = (global as any).registeredNodes || [];
+        
+        // Find node owning targetPrinter
+        let targetNode = registeredNodes.find(n => n.nodeUrl && n.printers.some((p: any) => p.name === targetPrinter));
+        if (!targetNode && registeredNodes.length > 0) {
+          // Fallback to first registered node if specific printer mapping wasn't found
+          targetNode = registeredNodes.find(n => Boolean(n.nodeUrl));
+        }
+
+        if (targetNode && targetNode.nodeUrl) {
+          try {
+            await logJob(context.jobId, `Attempting direct push to Print Node: ${targetNode.nodeUrl} (printer: ${targetPrinter})`);
+            const pdfBuffer = fs.readFileSync(finalOutputPath);
+            const pdfBase64 = pdfBuffer.toString('base64');
+
+            const pushRes = await fetch(`${targetNode.nodeUrl.replace(/\/$/, '')}/api/node/print`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: context.jobId,
+                destinationPrinter: targetPrinter,
+                filename: path.basename(finalOutputPath),
+                pdfBase64,
+                originalName: job.originalName
+              })
+            });
+
+            if (pushRes.ok) {
+              await logJob(context.jobId, `Direct push to ${targetNode.nodeUrl} succeeded!`);
+              await db.update(jobs)
+                .set({ status: 'COMPLETED', updatedAt: new Date() })
+                .where(eq(jobs.id, context.jobId));
+              return context;
+            } else {
+              const errText = await pushRes.text();
+              await logJob(context.jobId, `Direct push failed with status ${pushRes.status}: ${errText}. Falling back to READY_TO_PRINT.`, 'error');
+            }
+          } catch (err: any) {
+            await logJob(context.jobId, `Direct push error: ${err.message}. Falling back to READY_TO_PRINT.`, 'error');
+          }
+        }
+
+        await logJob(context.jobId, `Role is orchestrator. Job marked as READY_TO_PRINT for fallback polling.`);
         await db.update(jobs)
           .set({ status: 'READY_TO_PRINT', updatedAt: new Date() })
           .where(eq(jobs.id, context.jobId));
