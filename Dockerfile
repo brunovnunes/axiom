@@ -19,7 +19,8 @@ RUN apk add --no-cache \
     pixman-dev
 
 # Copy package manifests and install all dependencies
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
+RUN pnpm approve-builds --all || true
 RUN pnpm install --frozen-lockfile
 
 # Copy source code and build TypeScript to dist
