@@ -25,11 +25,8 @@ export class WindowsPrinter implements Printer {
         isDefault: !!item.Default,
       }));
     } catch (error: any) {
-      console.warn(`[WindowsPrinter] PowerShell printer lookup failed (${error.message}). Returning mock printer.`);
-      return [
-        { name: 'MOCK_WINDOWS_TERMICA', systemName: 'MOCK_WINDOWS_TERMICA', isDefault: true },
-        { name: 'MOCK_WINDOWS_PDF', systemName: 'MOCK_WINDOWS_PDF', isDefault: false },
-      ];
+      console.warn(`[WindowsPrinter] PowerShell printer lookup failed (${error.message}). Returning empty printer list.`);
+      return [];
     }
   }
 

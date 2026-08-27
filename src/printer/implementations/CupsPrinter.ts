@@ -36,19 +36,10 @@ export class CupsPrinter implements Printer {
         }
       }
 
-      // Fallback: If CUPS responded but printer list is empty
-      if (printers.length === 0) {
-        printers.push({ name: 'PDF-Printer', systemName: 'PDF-Printer', isDefault: true });
-      }
-
       return printers;
     } catch (error: any) {
-      console.warn(`[CupsPrinter] lpstat not available or failed (${error.message}). Returning mock printer.`);
-      // Mock printer fallback for testing/dev environments without CUPS
-      return [
-        { name: 'MOCK_TERMICA', systemName: 'MOCK_TERMICA', isDefault: true },
-        { name: 'MOCK_PDF', systemName: 'MOCK_PDF', isDefault: false },
-      ];
+      console.warn(`[CupsPrinter] lpstat not available or failed (${error.message}). Returning empty printer list.`);
+      return [];
     }
   }
 
