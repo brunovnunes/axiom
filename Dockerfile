@@ -9,7 +9,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Instalar dependências
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# Agora aprovar os scripts de build
+RUN pnpm approve-builds --all
+
+# E rodar a instalação novamente (dessa vez os scripts serão executados)
 RUN pnpm install --frozen-lockfile
+
 
 # Copiar o resto do código
 COPY . .
