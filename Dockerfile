@@ -35,7 +35,7 @@ COPY . .
 RUN pnpm run build
 
 # Remove development dependencies to keep production footprint minimal
-RUN pnpm prune --prod
+RUN pnpm prune --prod --ignore-scripts
 
 # -----------------------------------------------------------------------------
 # Stage 2: Minimal Production Runtime Stage
