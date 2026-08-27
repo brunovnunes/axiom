@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Enable pnpm via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Install native dependencies required for node-canvas compilation
 RUN apk add --no-cache \
     python3 \
@@ -15,16 +18,16 @@ RUN apk add --no-cache \
     librsvg-dev \
     pixman-dev
 
-# Copy package manifests and install all dependencies (including devDependencies for build)
-COPY package*.json ./
-RUN npm ci
+# Copy package manifests and install all dependencies
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 # Copy source code and build TypeScript to dist
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Remove development dependencies to keep production footprint minimal
-RUN npm prune --omit=dev
+RUN pnpm prune --prod
 
 # -----------------------------------------------------------------------------
 # Stage 2: Minimal Production Runtime Stage
