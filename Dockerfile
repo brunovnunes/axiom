@@ -20,7 +20,7 @@ RUN apk add --no-cache \
 
 # Copy package manifests and install all dependencies
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm config set onlyBuiltDependencies canvas esbuild && pnpm install --frozen-lockfile
 
 # Copy source code and build TypeScript to dist
 COPY . .
