@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   axiom:
     image: ghcr.io/brunovnunes/axiom:latest   # <-- essa linha substitui o build
