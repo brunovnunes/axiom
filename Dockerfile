@@ -1,41 +1,65 @@
-FROM node:20-slim AS builder
-
-# Instalar pnpm
-RUN npm install -g pnpm
+# Stage 1: Build stage
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copiar arquivos de dependência
-COPY package.json pnpm-lock.yaml ./
+# Enable pnpm via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Instalar dependências
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# Install native dependencies required for node-canvas compilation
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev
 
-# Agora aprovar os scripts de build
-RUN pnpm approve-builds --all
-
-# E rodar a instalação novamente (dessa vez os scripts serão executados)
+# Copy package manifests and install all dependencies
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
+RUN pnpm approve-builds --all || true
 RUN pnpm install --frozen-lockfile
 
-
-# Copiar o resto do código
+# Copy source code and build TypeScript to dist
 COPY . .
-
-# Build do projeto (se houver script "build")
 RUN pnpm run build
 
-# Imagem final (opcional, multi-stage)
-FROM node:20-slim
+# Remove development dependencies to keep production footprint minimal
+RUN pnpm prune --prod
+
+# -----------------------------------------------------------------------------
+# Stage 2: Minimal Production Runtime Stage
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Instalar pnpm na imagem final (se precisar rodar comandos)
-RUN npm install -g pnpm
+# Install runtime libraries for node-canvas, fonts, and CUPS printing tools
+RUN apk add --no-cache \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    librsvg \
+    pixman \
+    fontconfig \
+    ttf-dejavu \
+    cups-client
 
-# Copiar o build e as dependências
-COPY --from=builder /app/dist ./dist
+ENV NODE_ENV=production
+
+# Copy node_modules, compiled dist, and package.json from builder
+COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
+COPY --from=builder /app/dist ./dist
+
+# Create workspace volume directory for SQLite DB and job history
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
 
 EXPOSE 3000
-CMD ["node", "dist/api/server.js", "--orchestrator"]
+
+# Default command runs as standalone, can be overridden via docker-compose command
+CMD ["node", "dist/api/server.js"]
