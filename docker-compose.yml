@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  axiom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: axiom-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    # Exemplo para rodar como Orquestrador no Mini Servidor (Homelab):
+    command: ["node", "dist/api/server.js", "--orchestrator"]
+
+    # Caso queira rodar em modo Print Node se conectando a outro Orquestrador:
+    # command: ["node", "dist/api/server.js", "--node", "--url", "http://IP_DO_ORQUESTRADOR:3000"]

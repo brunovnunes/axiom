@@ -1,0 +1,8 @@
+node_modules
+dist
+data
+.git
+.gitignore
+.env
+check_db.ts
+*.log

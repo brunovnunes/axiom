@@ -10,11 +10,19 @@ import path from 'node:path';
 import os from 'node:os';
 import { ensureJobDirs } from '../storage/Workspace.js';
 import { eq } from 'drizzle-orm';
+import { getConfig } from '../config/config.js';
 
 export async function routes(fastify: FastifyInstance) {
   
   // POST /jobs - Create a new print job
   fastify.post('/jobs', async (request: FastifyRequest, reply: FastifyReply) => {
+    const config = getConfig();
+    if (config.role === 'print_node') {
+      return reply.status(403).send({
+        error: `This instance is running in 'print_node' mode. Submit print jobs to the Orchestrator at ${config.orchestratorUrl}`
+      });
+    }
+
     const data = await request.file();
     if (!data) {
       return reply.status(400).send({ error: 'File is required' });
@@ -94,6 +102,13 @@ export async function routes(fastify: FastifyInstance) {
 
   // POST /preview - Upload a file and process it (but do not auto-print). Returns jobId
   fastify.post('/preview', async (request: FastifyRequest, reply: FastifyReply) => {
+    const config = getConfig();
+    if (config.role === 'print_node') {
+      return reply.status(403).send({
+        error: `This instance is running in 'print_node' mode. Submit preview jobs to the Orchestrator at ${config.orchestratorUrl}`
+      });
+    }
+
     const data = await request.file();
     if (!data) return reply.status(400).send({ error: 'File is required' });
 
