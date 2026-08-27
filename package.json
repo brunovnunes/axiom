@@ -2,7 +2,7 @@
   "name": "axiom-printer-agent",
   "version": "1.0.0",
   "description": "AXIOM - Local Automation Printer Agent",
-  "main": "src/api/server.ts",
+  "main": "dist/api/server.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/api/server.ts",
