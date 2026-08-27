@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main  # ou master, dependendo do nome da branch principal do seu repo
+      - master  # ou master, dependendo do nome da branch principal do seu repo
   workflow_dispatch:  # Permite executar manualmente pela interface do GitHub
 
 permissions:
