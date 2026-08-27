@@ -1,65 +1,34 @@
-# Stage 1: Build stage
-FROM node:22-alpine AS builder
+FROM node:20-slim AS builder
+
+# Instalar pnpm
+RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Enable pnpm via Corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Copiar arquivos de dependência
+COPY package.json pnpm-lock.yaml ./
 
-# Install native dependencies required for node-canvas compilation
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    pango-dev \
-    jpeg-dev \
-    giflib-dev \
-    librsvg-dev \
-    pixman-dev
-
-# Copy package manifests and install all dependencies
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
-RUN pnpm approve-builds --all || true
+# Instalar dependências
 RUN pnpm install --frozen-lockfile
 
-# Copy source code and build TypeScript to dist
+# Copiar o resto do código
 COPY . .
+
+# Build do projeto (se houver script "build")
 RUN pnpm run build
 
-# Remove development dependencies to keep production footprint minimal
-RUN pnpm prune --prod
-
-# -----------------------------------------------------------------------------
-# Stage 2: Minimal Production Runtime Stage
-FROM node:22-alpine AS runner
+# Imagem final (opcional, multi-stage)
+FROM node:20-slim
 
 WORKDIR /app
 
-# Install runtime libraries for node-canvas, fonts, and CUPS printing tools
-RUN apk add --no-cache \
-    cairo \
-    pango \
-    jpeg \
-    giflib \
-    librsvg \
-    pixman \
-    fontconfig \
-    ttf-dejavu \
-    cups-client
+# Instalar pnpm na imagem final (se precisar rodar comandos)
+RUN npm install -g pnpm
 
-ENV NODE_ENV=production
-
-# Copy node_modules, compiled dist, and package.json from builder
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# Copiar o build e as dependências
 COPY --from=builder /app/dist ./dist
-
-# Create workspace volume directory for SQLite DB and job history
-RUN mkdir -p /app/data
-VOLUME ["/app/data"]
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
 
 EXPOSE 3000
-
-# Default command runs as standalone, can be overridden via docker-compose command
-CMD ["node", "dist/api/server.js"]
+CMD ["node", "dist/api/server.js", "--orchestrator"]
