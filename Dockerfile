@@ -22,7 +22,7 @@ RUN apk add --no-cache \
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
 
 # Step 1: Install dependencies without running build scripts to bypass initial PNPM block
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Step 2: Approve build scripts for all installed dependencies
 RUN pnpm approve-builds --all
