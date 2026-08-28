@@ -6,16 +6,20 @@ import { initDb } from '../database/db.js';
 import { getConfig } from '../config/config.js';
 import { mkdir } from 'node:fs/promises';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const fastify = Fastify({
-  logger: {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname',
+  logger: isProduction
+    ? true
+    : {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname',
+          },
+        },
       },
-    },
-  },
 });
 
 async function start() {
