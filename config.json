@@ -27,5 +27,8 @@
             "description": "4×6 inch standard"
         }
     },
-    "autoDetectProfile": true
+    "autoDetectProfile": true,
+    "condenseDanfe": true,
+    "role": "standalone",
+    "orchestratorUrl": "http://localhost:3000"
 }

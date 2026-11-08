@@ -4,6 +4,8 @@ export interface PipelineContext {
   currentFilePath: string;
   // Detected marketplace plugin name, if any
   detectedPlugin?: string;
+  // Whether to condense DANFE onto label (Mercado Livre)
+  condenseDanfe?: boolean;
 }
 
 export interface PipelineStep {

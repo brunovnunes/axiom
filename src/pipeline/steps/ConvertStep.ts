@@ -103,7 +103,16 @@ export class ConvertStep implements PipelineStep {
         throw err;
       }
     } else if (job.inputFormat === 'PDF') {
-      await logJob(context.jobId, `File is already in PDF format. No conversion needed.`);
+      const jobDirs = ensureJobDirs(context.jobId);
+      const pdfPath = path.join(jobDirs.processed, 'rendered_label.pdf');
+      
+      // If the file was processed/transformed into a new file, copy to rendered_label.pdf for output consistency
+      if (fs.existsSync(context.currentFilePath) && context.currentFilePath !== pdfPath) {
+        fs.copyFileSync(context.currentFilePath, pdfPath);
+        context.currentFilePath = pdfPath;
+      }
+
+      await logJob(context.jobId, `PDF processed and ready for output.`);
       await db.update(jobs)
         .set({ 
           outputFormat: 'PDF',

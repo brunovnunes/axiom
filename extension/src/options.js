@@ -1,158 +1,218 @@
 /**
- * Options Page Script
- * Handles settings for the Axiom Printer Extension
+ * Axiom Options Page Script
+ * Manages configuration and LAN auto-discovery
  */
 
 const DEFAULT_SERVER_URL = 'http://localhost:3000';
 
-// DOM Elements
-const form = document.getElementById('settings-form');
 const serverUrlInput = document.getElementById('server-url');
-const btnReset = document.getElementById('btn-reset');
+const condenseDanfeInput = document.getElementById('condense-danfe');
+const btnDiscover = document.getElementById('btn-discover');
 const btnTest = document.getElementById('btn-test');
-const statusMessage = document.getElementById('status-message');
-const testStatus = document.getElementById('test-status');
+const btnSave = document.getElementById('btn-save');
+const statusBadge = document.getElementById('status-badge');
+const statusMsg = document.getElementById('status-msg');
+const statusText = document.getElementById('status-text');
+const statusSpinner = document.getElementById('status-spinner');
 
-/**
- * Load settings from storage
- */
-async function loadSettings() {
-  const result = await chrome.storage.sync.get(['serverUrl']);
-  const url = result.serverUrl || DEFAULT_SERVER_URL;
-  serverUrlInput.value = url;
+function showStatus(type, message, loading = false) {
+  statusMsg.className = `status-msg show ${type}`;
+  statusText.textContent = message;
+  statusSpinner.style.display = loading ? 'inline-block' : 'none';
+
+  if (type === 'success' && !loading) {
+    setTimeout(() => {
+      statusMsg.className = 'status-msg';
+    }, 3500);
+  }
 }
 
-/**
- * Save settings to storage
- */
-async function saveSettings(url) {
-  await chrome.storage.sync.set({ serverUrl: url });
+function normalizeUrl(url) {
+  let cleaned = (url || '').trim().replace(/\/+$/, '');
+  if (cleaned && !cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+    cleaned = `http://${cleaned}`;
+  }
+  return cleaned;
 }
 
-/**
- * Validate URL format
- */
 function validateUrl(url) {
   try {
-    const urlObj = new URL(url);
-    // Only allow http and https
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return false;
-    }
-    return true;
+    const obj = new URL(url);
+    return obj.protocol === 'http:' || obj.protocol === 'https:';
   } catch {
     return false;
   }
 }
 
-/**
- * Show status message
- */
-function showMessage(message, type = 'success', element = statusMessage) {
-  element.textContent = message;
-  element.className = `status-message show ${type}`;
-  
-  if (type === 'success') {
-    setTimeout(() => {
-      element.classList.remove('show');
-    }, 3000);
+async function checkServer(url, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(`${url}/api/printers`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    return res.ok;
+  } catch {
+    clearTimeout(timer);
+    return false;
   }
 }
 
-/**
- * Test connection to server
- */
-async function testConnection() {
-  const url = serverUrlInput.value.trim();
+async function loadSettings() {
+  const result = await chrome.storage.sync.get(['serverUrl', 'condenseDanfe']);
+  const url = result.serverUrl || DEFAULT_SERVER_URL;
+  serverUrlInput.value = url;
 
-  if (!url) {
-    showMessage('❌ Insira uma URL antes de testar', 'error', testStatus);
+  if (condenseDanfeInput) {
+    condenseDanfeInput.checked = result.condenseDanfe !== undefined ? Boolean(result.condenseDanfe) : true;
+  }
+
+  // Check connection on load
+  const isOnline = await checkServer(url, 2000);
+  if (isOnline) {
+    statusBadge.textContent = 'Conectado';
+    statusBadge.className = 'status-badge online';
+  } else {
+    statusBadge.textContent = 'Desconectado';
+    statusBadge.className = 'status-badge';
+  }
+}
+
+async function saveSettings() {
+  const rawUrl = serverUrlInput.value.trim();
+  const url = normalizeUrl(rawUrl);
+
+  if (!url || !validateUrl(url)) {
+    showStatus('error', 'URL inválida. Ex: http://192.168.1.100:3000 ou http://axiom.local:3000');
     return;
   }
 
-  if (!validateUrl(url)) {
-    showMessage('❌ URL inválida. Use http:// ou https://', 'error', testStatus);
+  serverUrlInput.value = url;
+  const condenseDanfe = condenseDanfeInput ? condenseDanfeInput.checked : true;
+
+  btnSave.disabled = true;
+  showStatus('loading', 'Salvando configurações...', true);
+
+  try {
+    await chrome.storage.sync.set({ serverUrl: url, condenseDanfe });
+    const isOnline = await checkServer(url, 3000);
+
+    if (isOnline) {
+      statusBadge.textContent = 'Conectado';
+      statusBadge.className = 'status-badge online';
+      showStatus('success', 'Configurações salvas e servidor conectado');
+    } else {
+      statusBadge.textContent = 'Desconectado';
+      statusBadge.className = 'status-badge';
+      showStatus('error', 'Salvo, mas o servidor não respondeu nessa URL');
+    }
+  } catch (err) {
+    showStatus('error', err.message || 'Erro ao salvar configurações');
+  } finally {
+    btnSave.disabled = false;
+  }
+}
+
+async function testConnection() {
+  const url = normalizeUrl(serverUrlInput.value);
+
+  if (!url || !validateUrl(url)) {
+    showStatus('error', 'Informe uma URL válida para testar');
     return;
   }
 
   btnTest.disabled = true;
-  btnTest.textContent = '⏳ Testando...';
+  showStatus('loading', `Testando conexão em ${url}...`, true);
 
-  try {
-    const response = await fetch(`${url}/api/printers`, {
-      method: 'GET',
-      mode: 'cors',
-      timeout: 5000,
-    });
+  const isOnline = await checkServer(url, 4000);
+  btnTest.disabled = false;
 
-    if (response.ok) {
-      showMessage('✅ Conectado com sucesso! Servidor encontrado.', 'success', testStatus);
-      btnTest.textContent = '🧪 Conectar ao Servidor';
-      btnTest.disabled = false;
-    } else {
-      showMessage(`❌ Servidor respondeu com erro: ${response.status}`, 'error', testStatus);
-      btnTest.textContent = '🧪 Conectar ao Servidor';
-      btnTest.disabled = false;
-    }
-  } catch (error) {
-    let customMessage = '❌ Não conseguiu conectar ao servidor.';
-    
-    if (error.name === 'TypeError') {
-      customMessage += ' Verifique se o IP está correto e o servidor está rodando.';
-    } else if (error.message.includes('timeout')) {
-      customMessage += ' Conexão expirou (timeout).';
-    }
-
-    showMessage(customMessage, 'error', testStatus);
-    console.error('Connection test error:', error);
-    btnTest.textContent = '🧪 Conectar ao Servidor';
-    btnTest.disabled = false;
+  if (isOnline) {
+    statusBadge.textContent = 'Conectado';
+    statusBadge.className = 'status-badge online';
+    showStatus('success', 'Conexão estabelecida com sucesso');
+  } else {
+    statusBadge.textContent = 'Desconectado';
+    statusBadge.className = 'status-badge';
+    showStatus('error', 'Não foi possível conectar. Verifique se o Axiom está rodando nessa URL');
   }
 }
 
 /**
- * Handle form submission
+ * Auto-detect Axiom Server on local machine and local network
  */
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function autoDiscoverServer() {
+  btnDiscover.disabled = true;
+  showStatus('loading', 'Buscando servidor Axiom na rede...', true);
 
-  const url = serverUrlInput.value.trim();
+  const candidates = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://axiom.local:3000',
+    normalizeUrl(serverUrlInput.value),
+  ].filter(Boolean);
 
-  if (!url) {
-    showMessage('❌ Insira uma URL', 'error');
-    return;
+  // Remove duplicates
+  const uniqueCandidates = [...new Set(candidates)];
+
+  // 1. Try common hostnames first
+  for (const candidate of uniqueCandidates) {
+    if (await checkServer(candidate, 1200)) {
+      serverUrlInput.value = candidate;
+      await chrome.storage.sync.set({ serverUrl: candidate });
+      statusBadge.textContent = 'Conectado';
+      statusBadge.className = 'status-badge online';
+      showStatus('success', `Servidor encontrado em: ${candidate}`);
+      btnDiscover.disabled = false;
+      return;
+    }
   }
 
-  if (!validateUrl(url)) {
-    showMessage('❌ URL inválida. Use http://192.168.x.x:3000 ou http://localhost:3000', 'error');
-    return;
+  // 2. If a subnet is configured in input (e.g. 192.168.1.X or 192.168.0.X), scan nearby IPs in parallel batches
+  const match = serverUrlInput.value.match(/http:\/\/(\d+\.\d+\.\d+)\.\d+:(\d+)/);
+  if (match) {
+    const subnet = match[1];
+    const port = match[2] || '3000';
+    showStatus('loading', `Varrendo sub-rede ${subnet}.* na porta ${port}...`, true);
+
+    const ipsToScan = [];
+    for (let i = 1; i <= 254; i++) {
+      ipsToScan.push(`http://${subnet}.${i}:${port}`);
+    }
+
+    // Scan in chunks of 20
+    const chunkSize = 20;
+    for (let i = 0; i < ipsToScan.length; i += chunkSize) {
+      const chunk = ipsToScan.slice(i, i + chunkSize);
+      const results = await Promise.all(
+        chunk.map(async (ip) => {
+          const ok = await checkServer(ip, 800);
+          return ok ? ip : null;
+        })
+      );
+
+      const found = results.find(Boolean);
+      if (found) {
+        serverUrlInput.value = found;
+        await chrome.storage.sync.set({ serverUrl: found });
+        statusBadge.textContent = 'Conectado';
+        statusBadge.className = 'status-badge online';
+        showStatus('success', `Servidor encontrado em: ${found}`);
+        btnDiscover.disabled = false;
+        return;
+      }
+    }
   }
 
-  try {
-    await saveSettings(url);
-    showMessage('✅ Configurações salvas com sucesso!', 'success');
-    console.log(`Server URL updated to: ${url}`);
-  } catch (error) {
-    showMessage('❌ Erro ao salvar configurações', 'error');
-    console.error('Error saving settings:', error);
-  }
-});
+  btnDiscover.disabled = false;
+  showStatus('error', 'Nenhum servidor encontrado automaticamente. Verifique se o Axiom está ativo');
+}
 
-/**
- * Handle reset button
- */
-btnReset.addEventListener('click', async () => {
-  if (confirm('Restaurar para o valor padrão (http://localhost:3000)?')) {
-    serverUrlInput.value = DEFAULT_SERVER_URL;
-    await saveSettings(DEFAULT_SERVER_URL);
-    showMessage('✅ Restaurado para padrão', 'success');
-  }
-});
-
-/**
- * Handle test button
- */
+btnSave.addEventListener('click', saveSettings);
 btnTest.addEventListener('click', testConnection);
+btnDiscover.addEventListener('click', autoDiscoverServer);
 
-// Load settings on page load
 loadSettings();

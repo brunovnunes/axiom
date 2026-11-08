@@ -38,6 +38,7 @@ export function initDb(): ReturnType<typeof drizzle<typeof schema>> {
       output_format TEXT DEFAULT 'UNKNOWN' NOT NULL,
       destination_printer TEXT NOT NULL,
       workspace_path TEXT NOT NULL,
+      condense_danfe INTEGER,
       error TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -53,6 +54,18 @@ export function initDb(): ReturnType<typeof drizzle<typeof schema>> {
     
     CREATE INDEX IF NOT EXISTS idx_job_logs_job_id ON job_logs(job_id);
   `);
+
+  try {
+    sqliteInstance.exec(`ALTER TABLE jobs ADD COLUMN condense_danfe INTEGER;`);
+  } catch {
+    // Column already exists
+  }
+
+  try {
+    sqliteInstance.exec(`ALTER TABLE jobs ADD COLUMN pages TEXT;`);
+  } catch {
+    // Column already exists
+  }
 
   dbInstance = drizzle(async (sql, params, method) => {
     if (!sqliteInstance) return { rows: [] };

@@ -30,12 +30,12 @@ export class DetectStep implements PipelineStep {
       return context;
     }
 
-    // We only perform marketplace detection on ZPL files currently
+    // For ZPL files, detect via content
     if (job.inputFormat === 'ZPL') {
       try {
         const content = fs.readFileSync(context.currentFilePath, 'utf-8');
-        const matchedPlugin = await pluginManager.detectMarketplace(content, job.originalName);
-        
+        const matchedPlugin = await pluginManager.detectMarketplace(content, job.originalName, context.currentFilePath);
+
         if (matchedPlugin) {
           context.detectedPlugin = matchedPlugin.name;
           await logJob(context.jobId, `Marketplace detected: ${matchedPlugin.name.toUpperCase()} plugin matched`);
@@ -45,8 +45,21 @@ export class DetectStep implements PipelineStep {
       } catch (err: any) {
         await logJob(context.jobId, `Error reading file for detection: ${err.message}`, 'error');
       }
+    } else if (job.inputFormat === 'PDF') {
+      // For PDF files, detect via filename and content (Mercado Livre sends PDFs directly)
+      try {
+        const matchedPlugin = await pluginManager.detectMarketplace('', job.originalName, context.currentFilePath);
+        if (matchedPlugin) {
+          context.detectedPlugin = matchedPlugin.name;
+          await logJob(context.jobId, `Marketplace detected (PDF): ${matchedPlugin.name.toUpperCase()} plugin matched`);
+        } else {
+          await logJob(context.jobId, `No matching marketplace plugin detected for this PDF file`);
+        }
+      } catch (err: any) {
+        await logJob(context.jobId, `Error detecting marketplace for PDF: ${err.message}`, 'error');
+      }
     } else {
-      await logJob(context.jobId, `Skipping marketplace detection for non-ZPL input format (${job.inputFormat})`);
+      await logJob(context.jobId, `Skipping marketplace detection for input format: ${job.inputFormat}`);
     }
 
     return context;

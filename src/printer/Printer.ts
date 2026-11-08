@@ -6,6 +6,7 @@ export interface PrinterInfo {
 
 export interface PrintOptions {
   printerName?: string;
+  pages?: string;
 }
 
 export interface Printer {

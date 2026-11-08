@@ -25,6 +25,8 @@ export const jobs = sqliteTable('jobs', {
   outputFormat: text('output_format').notNull().default('UNKNOWN'), // ZPL, PDF, UNKNOWN
   destinationPrinter: text('destination_printer').notNull(),
   workspacePath: text('workspace_path').notNull(),
+  condenseDanfe: integer('condense_danfe', { mode: 'boolean' }),
+  pages: text('pages'),
   error: text('error'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

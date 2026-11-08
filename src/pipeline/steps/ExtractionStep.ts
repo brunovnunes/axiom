@@ -131,6 +131,8 @@ export class ExtractionStep implements PipelineStep {
         outputFormat: 'UNKNOWN',
         destinationPrinter: job.destinationPrinter,
         workspacePath: childDestPath,
+        condenseDanfe: job.condenseDanfe,
+        pages: job.pages,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

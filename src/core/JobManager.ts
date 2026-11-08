@@ -7,11 +7,14 @@ import { ensureJobDirs } from '../storage/Workspace.js';
 import { jobQueue } from './JobQueue.js';
 import { logJob } from '../utils/logger.js';
 import { eq } from 'drizzle-orm';
+import { getConfig } from '../config/config.js';
 
 export interface CreateJobInput {
   originalName: string;
   fileBuffer: Buffer;
   destinationPrinter: string;
+  condenseDanfe?: boolean;
+  pages?: string;
 }
 
 export class JobManager {
@@ -28,6 +31,8 @@ export class JobManager {
     fs.writeFileSync(originalPath, input.fileBuffer);
     
     const db = getDb();
+    const config = getConfig();
+    const shouldCondense = input.condenseDanfe !== undefined ? input.condenseDanfe : (config.condenseDanfe ?? true);
     
     await db.insert(jobs).values({
       id: jobId,
@@ -38,6 +43,8 @@ export class JobManager {
       outputFormat: 'UNKNOWN',
       destinationPrinter: input.destinationPrinter,
       workspacePath: originalPath,
+      condenseDanfe: shouldCondense,
+      pages: input.pages || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

@@ -36,22 +36,39 @@ export class TransformStep implements PipelineStep {
       const plugin = pluginManager.getPlugins().find(p => p.name === context.detectedPlugin);
       if (plugin) {
         await logJob(context.jobId, `Applying marketplace plugin: ${plugin.name}`);
-        
+
         try {
-          const content = fs.readFileSync(context.currentFilePath, 'utf-8');
-          const transformedContent = await plugin.transform(content);
-          
+          // For PDF files (e.g. Mercado Livre), pass binary content + options
+          const isPdf = context.currentFilePath.toLowerCase().endsWith('.pdf');
+          const content = isPdf
+            ? '' // PDF plugins don't use string content - they use filePath from options
+            : fs.readFileSync(context.currentFilePath, 'utf-8');
+
+          const transformOptions = {
+            filePath: context.currentFilePath,
+            jobId: context.jobId,
+            condenseDanfe: context.condenseDanfe,
+          };
+
+          const transformedContent = await plugin.transform(content, transformOptions);
+
           const jobDirs = ensureJobDirs(context.jobId);
-          const ext = path.extname(context.currentFilePath);
-          const transformedFileName = `transformed_${path.basename(context.currentFilePath, ext)}${ext}`;
-          const transformedFilePath = path.join(jobDirs.processed, transformedFileName);
-          
-          fs.writeFileSync(transformedFilePath, transformedContent, 'utf-8');
-          
-          // Update context path to the new transformed file
-          context.currentFilePath = transformedFilePath;
-          
-          await logJob(context.jobId, `Transformation applied successfully. Output written to ${transformedFilePath}`);
+
+          if (Buffer.isBuffer(transformedContent)) {
+            // Binary output (PDF → PDF): use a fixed output name
+            const transformedFilePath = path.join(jobDirs.processed, 'condensed_label.pdf');
+            fs.writeFileSync(transformedFilePath, transformedContent);
+            context.currentFilePath = transformedFilePath;
+            await logJob(context.jobId, `Transformation (PDF) applied. Output: ${transformedFilePath}`);
+          } else {
+            // String output (ZPL → ZPL): preserve name pattern
+            const ext = path.extname(context.currentFilePath);
+            const transformedFileName = `transformed_${path.basename(context.currentFilePath, ext)}${ext}`;
+            const transformedFilePath = path.join(jobDirs.processed, transformedFileName);
+            fs.writeFileSync(transformedFilePath, transformedContent, 'utf-8');
+            context.currentFilePath = transformedFilePath;
+            await logJob(context.jobId, `Transformation applied successfully. Output written to ${transformedFilePath}`);
+          }
         } catch (err: any) {
           await logJob(context.jobId, `Transformation failed: ${err.message}`, 'error');
           throw err;

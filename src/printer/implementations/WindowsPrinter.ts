@@ -36,8 +36,14 @@ export class WindowsPrinter implements Printer {
     
     // If printer is specified, print to it, otherwise print to default system printer
     const args = printerName
-      ? ['-print-to', printerName, filePath]
-      : ['-print-default', filePath];
+      ? ['-print-to', printerName]
+      : ['-print-default'];
+
+    if (options?.pages && options.pages.toLowerCase() !== 'all') {
+      args.push('-print-settings', options.pages);
+    }
+
+    args.push(filePath);
 
     try {
       const { execFile } = await import('node:child_process');

@@ -22,6 +22,7 @@ export const ConfigSchema = z.object({
   workspace: z.string().default('./data'),
   labelProfiles: z.record(LabelProfileSchema).optional(),
   autoDetectProfile: z.boolean().default(true),
+  condenseDanfe: z.boolean().default(true),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

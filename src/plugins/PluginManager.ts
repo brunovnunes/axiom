@@ -1,12 +1,14 @@
 import { MarketplacePlugin } from './MarketplacePlugin.js';
 import { ShopeePlugin } from './shopee/ShopeePlugin.js';
+import { MercadoLivrePlugin } from './mercadolivre/MercadoLivrePlugin.js';
 
 export class PluginManager {
   private plugins: MarketplacePlugin[] = [];
 
   constructor() {
-    // Initially register the Shopee plugin
+    // Register builtin plugins
     this.plugins.push(new ShopeePlugin());
+    this.plugins.push(new MercadoLivrePlugin());
   }
 
   /**
@@ -26,10 +28,10 @@ export class PluginManager {
   /**
    * Detects if any registered plugin matches the file.
    */
-  async detectMarketplace(content: string, filename: string): Promise<MarketplacePlugin | null> {
+  async detectMarketplace(content: string, filename: string, filePath?: string): Promise<MarketplacePlugin | null> {
     for (const plugin of this.plugins) {
       try {
-        if (await plugin.detect(content, filename)) {
+        if (await plugin.detect(content, filename, filePath)) {
           return plugin;
         }
       } catch (err) {

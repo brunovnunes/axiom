@@ -45,7 +45,15 @@ export class CupsPrinter implements Printer {
 
   async print(filePath: string, options?: PrintOptions): Promise<void> {
     const printerName = options?.printerName;
-    const args = printerName ? ['-d', printerName, filePath] : [filePath];
+    const args: string[] = [];
+
+    if (printerName) {
+      args.push('-d', printerName);
+    }
+    if (options?.pages && options.pages.toLowerCase() !== 'all') {
+      args.push('-P', options.pages);
+    }
+    args.push(filePath);
 
     try {
       // Executing "lp"

@@ -182,6 +182,9 @@ async function submitJob(payload) {
     formData.append('file', payload.file, payload.filename);
     formData.append('printer', payload.printer);
     formData.append('marketplace', payload.marketplace || 'unknown');
+    if (payload.condenseDanfe !== undefined) {
+      formData.append('condenseDanfe', String(payload.condenseDanfe));
+    }
 
     const response = await fetch(`${AXIOM_API_URL}/jobs`, {
       method: 'POST',

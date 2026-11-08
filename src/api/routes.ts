@@ -36,11 +36,28 @@ export async function routes(fastify: FastifyInstance) {
     if (printerField && 'value' in printerField) {
       destinationPrinter = String(printerField.value);
     }
+
+    const condenseDanfeField = data.fields.condenseDanfe;
+    let condenseDanfe = config.condenseDanfe ?? true;
+    if (condenseDanfeField && 'value' in condenseDanfeField) {
+      condenseDanfe = String(condenseDanfeField.value).toLowerCase() === 'true';
+    }
+
+    const pagesField = data.fields.pages;
+    let pages: string | undefined = undefined;
+    if (pagesField && 'value' in pagesField) {
+      const val = String(pagesField.value).trim();
+      if (val && val.toLowerCase() !== 'all') {
+        pages = val;
+      }
+    }
     
     const jobId = await jobManager.createJob({
       originalName: data.filename,
       fileBuffer,
       destinationPrinter,
+      condenseDanfe,
+      pages,
     });
     
     await jobQueue.trigger();
@@ -116,10 +133,17 @@ export async function routes(fastify: FastifyInstance) {
     // Create job with special destination to avoid printing
     const destinationPrinter = '__PREVIEW__';
 
+    const condenseDanfeField = data.fields.condenseDanfe;
+    let condenseDanfe = config.condenseDanfe ?? true;
+    if (condenseDanfeField && 'value' in condenseDanfeField) {
+      condenseDanfe = String(condenseDanfeField.value).toLowerCase() === 'true';
+    }
+
     const jobId = await jobManager.createJob({
       originalName: data.filename,
       fileBuffer,
       destinationPrinter,
+      condenseDanfe,
     });
 
     // Trigger queue
@@ -183,9 +207,12 @@ export async function routes(fastify: FastifyInstance) {
       }
 
       const parentStatus = await jobManager.getJobStatus(id);
-      const complete = parentStatus ? (parentStatus.status === 'COMPLETED' || parentStatus.status === 'FAILED') : false;
+      const allChildrenFinished = children.length > 0
+        ? children.every(c => c.status === 'COMPLETED' || c.status === 'FAILED')
+        : true;
+      const complete = Boolean(parentStatus && (parentStatus.status === 'COMPLETED' || parentStatus.status === 'FAILED') && allChildrenFinished);
 
-      return reply.send({ outputs: results, complete });
+      return reply.send({ outputs: results, complete, totalExpected: children.length || 1 });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
@@ -231,7 +258,7 @@ export async function routes(fastify: FastifyInstance) {
   // POST /node/print - Endpoint on Node to receive direct push print requests from Orchestrator
   fastify.post('/node/print', async (request: FastifyRequest, reply: FastifyReply) => {
     const body: any = request.body || {};
-    const { id, destinationPrinter, filename, pdfBase64, originalName } = body;
+    const { id, destinationPrinter, filename, pdfBase64, originalName, pages } = body;
     
     if (!pdfBase64) {
       return reply.status(400).send({ error: 'pdfBase64 is required' });
@@ -246,7 +273,7 @@ export async function routes(fastify: FastifyInstance) {
 
       if (destinationPrinter !== '__PREVIEW__') {
         const backend = await getPrinterBackend();
-        await backend.print(tempPath, { printerName: destinationPrinter });
+        await backend.print(tempPath, { printerName: destinationPrinter, pages });
       }
 
       return reply.send({ success: true, jobId: id });
@@ -292,7 +319,8 @@ export async function routes(fastify: FastifyInstance) {
         destinationPrinter: j.destinationPrinter,
         originalName: j.originalName,
         filename,
-        pdfBase64
+        pdfBase64,
+        pages: j.pages
       };
     }).filter(j => j.pdfBase64 !== null);
 

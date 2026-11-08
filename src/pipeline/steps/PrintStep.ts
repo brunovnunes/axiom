@@ -111,7 +111,8 @@ export class PrintStep implements PipelineStep {
                 destinationPrinter: targetPrinter,
                 filename: path.basename(finalOutputPath),
                 pdfBase64,
-                originalName: job.originalName
+                originalName: job.originalName,
+                pages: job.pages || undefined
               })
             });
 
@@ -143,7 +144,10 @@ export class PrintStep implements PipelineStep {
       await logJob(context.jobId, `Sending document to printer: ${targetPrinter}...`);
       
       try {
-        await printerBackend.print(finalOutputPath, { printerName: targetPrinter });
+        await printerBackend.print(finalOutputPath, {
+          printerName: targetPrinter,
+          pages: job.pages || undefined
+        });
         await logJob(context.jobId, `Sent file to printer "${targetPrinter}" successfully`);
       } catch (err: any) {
         await logJob(context.jobId, `Failed to print document: ${err.message}`, 'error');

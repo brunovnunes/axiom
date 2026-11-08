@@ -35,6 +35,10 @@ export class Pipeline {
     };
 
     const db = getDb();
+    const [initialJob] = await db.select().from(jobs).where(eq(jobs.id, jobId));
+    if (initialJob && initialJob.condenseDanfe !== null && initialJob.condenseDanfe !== undefined) {
+      context.condenseDanfe = initialJob.condenseDanfe;
+    }
 
     try {
       for (const step of this.steps) {

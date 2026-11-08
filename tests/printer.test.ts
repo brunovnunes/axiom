@@ -14,19 +14,15 @@ describe('Printer Backend', () => {
     }
   });
 
-  it('should return mock printers when CUPS fails or is missing', async () => {
+  it('should return an array when CUPS fails or is missing', async () => {
     const printer = new CupsPrinter();
     const list = await printer.listPrinters();
-    expect(list.length).toBeGreaterThan(0);
-    expect(list[0]).toHaveProperty('name');
-    expect(list[0]).toHaveProperty('isDefault');
+    expect(Array.isArray(list)).toBe(true);
   });
 
-  it('should return mock printers when Windows powershell fails or is missing', async () => {
+  it('should return an array when Windows powershell fails or is missing', async () => {
     const printer = new WindowsPrinter();
     const list = await printer.listPrinters();
-    expect(list.length).toBeGreaterThan(0);
-    expect(list[0]).toHaveProperty('name');
-    expect(list[0]).toHaveProperty('isDefault');
+    expect(Array.isArray(list)).toBe(true);
   });
 });

@@ -1,16 +1,16 @@
-import { MarketplacePlugin } from '../MarketplacePlugin.js';
+import { MarketplacePlugin, PluginTransformOptions } from '../MarketplacePlugin.js';
 import { getConfig } from '../../config/config.js';
 import { parseZpl, stringifyZpl } from '../../utils/zpl-parser.js';
 
 export class ShopeePlugin implements MarketplacePlugin {
   name = 'shopee';
 
-  async detect(content: string, _filename: string): Promise<boolean> {
+  async detect(content: string, _filename: string, _filePath?: string): Promise<boolean> {
     // Detection rule: ZPL file contains "~DGR:" and "^XGR:"
     return content.includes('~DGR:') && content.includes('^XGR:');
   }
 
-  async transform(content: string): Promise<string> {
+  async transform(content: string, _options?: PluginTransformOptions): Promise<string> {
     const config = getConfig();
     const scale = config.shopeeRasterScale;
     

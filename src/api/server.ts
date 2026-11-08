@@ -52,7 +52,12 @@ async function start() {
     const port = 3000;
     await fastify.listen({ port, host: '0.0.0.0' });
     
-    fastify.log.info(`Axiom Printer Agent API running on http://localhost:${port}/api`);
+    const { default: os } = await import('node:os');
+    const localHostName = os.hostname().toLowerCase();
+
+    fastify.log.info(`Axiom Printer Agent API running:`);
+    fastify.log.info(`  • Local: http://localhost:${port}/api`);
+    fastify.log.info(`  • Rede Local (mDNS sem IP fixo): http://${localHostName}.local:${port}/api`);
 
     // Start Print Node client if applicable
     if (config.role === 'print_node' || config.role === 'standalone') {

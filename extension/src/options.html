@@ -3,237 +3,391 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Axiom Printer - Configurações</title>
+  <title>Axiom - Configurações</title>
   <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #0d9488;
+      --accent-hover: #14b8a6;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px 16px;
     }
 
     .container {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-      padding: 40px;
-      max-width: 500px;
       width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    h1 {
-      color: #333;
-      margin-bottom: 10px;
-      font-size: 24px;
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 4px;
     }
 
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 30px;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(13, 148, 136, 0.6);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+    }
+
+    .status-badge.online {
+      background: rgba(13, 148, 136, 0.15);
+      color: #2dd4bf;
+    }
+
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
     }
 
     .form-group {
-      margin-bottom: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    label {
-      display: block;
-      color: #333;
+    .label {
+      font-size: 12px;
       font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 14px;
+      color: var(--text);
     }
 
-    input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-      font-family: 'Courier New', monospace;
-      transition: border-color 0.3s ease;
+    .input-row {
+      display: flex;
+      gap: 8px;
     }
 
-    input:focus {
+    .input {
+      flex: 1;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: monospace;
+      color: var(--text);
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transition: border-color 0.15s ease;
     }
 
-    .helper-text {
-      margin-top: 8px;
+    .input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-discover {
+      padding: 10px 14px;
+      background: rgba(13, 148, 136, 0.15);
+      border: 1px solid rgba(13, 148, 136, 0.3);
+      border-radius: var(--radius-sm);
+      color: #2dd4bf;
       font-size: 12px;
-      color: #999;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .example {
-      background: #f5f5f5;
-      padding: 10px;
-      border-left: 3px solid #667eea;
-      margin-top: 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-family: 'Courier New', monospace;
-      color: #666;
+    .btn-discover:hover:not(:disabled) {
+      background: rgba(13, 148, 136, 0.25);
     }
 
-    .button-group {
+    .btn-discover:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .tips-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .tips-box code {
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    /* Toggle Row */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .toggle-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      cursor: pointer;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      transition: 0.2s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+
+    .switch input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* Action buttons */
+    .action-row {
       display: flex;
       gap: 10px;
-      margin-top: 30px;
     }
 
-    button {
+    .btn {
       flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-save {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-save:hover {
-      background: #5568d3;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    .btn-reset {
-      background: #f0f0f0;
-      color: #333;
-      border: 1px solid #ddd;
-    }
-
-    .btn-reset:hover {
-      background: #e0e0e0;
-    }
-
-    .status-message {
-      margin-top: 20px;
-      padding: 12px;
-      border-radius: 6px;
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
       font-size: 13px;
-      display: none;
-    }
-
-    .status-message.show {
-      display: block;
-    }
-
-    .status-message.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-
-    .status-message.error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-
-    .test-section {
-      margin-top: 30px;
-      padding-top: 30px;
-      border-top: 1px solid #eee;
-    }
-
-    .test-section h3 {
-      color: #333;
-      font-size: 14px;
-      margin-bottom: 12px;
-    }
-
-    .btn-test {
-      width: 100%;
-      background: #764ba2;
-      color: white;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      border: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
-    .btn-test:hover {
-      background: #653a85;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
     }
 
-    .btn-test:disabled {
-      background: #ccc;
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
       cursor: not-allowed;
       transform: none;
     }
 
-    .info-box {
-      background: #e7f3ff;
-      border-left: 4px solid #2196F3;
-      padding: 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      color: #1565c0;
-      margin-bottom: 20px;
+    /* Status message */
+    .status-msg {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-msg.show {
+      display: flex;
+    }
+
+    .status-msg.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .status-msg.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .status-msg.loading {
+      background: rgba(13, 148, 136, 0.15);
+      color: #2dd4bf;
+      border: 1px solid rgba(13, 148, 136, 0.25);
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>⚙️ Axiom Printer</h1>
-    <p class="subtitle">Configurações da Extensão</p>
-
-    <div class="info-box">
-      💡 Configure o IP do servidor Axiom Printer Agent para que a extensão possa se conectar e enviar impressões.
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-title">Axiom</span>
+      </div>
+      <span class="status-badge" id="status-badge">Verificando...</span>
     </div>
 
-    <form id="settings-form">
+    <!-- Main Settings Card -->
+    <div class="card">
+      <span class="card-title">Servidor de Impressão</span>
+
       <div class="form-group">
-        <label for="server-url">URL do Servidor Axiom:</label>
-        <input 
-          type="text" 
-          id="server-url" 
-          placeholder="Ex: http://192.168.1.100:3000"
-          required
-        >
-        <div class="helper-text">Insira o endereço IP do computador onde o Axiom Printer está rodando</div>
-        <div class="example">
-          Exemplos:<br>
-          • Mesma rede: http://192.168.1.100:3000<br>
-          • Localhost: http://localhost:3000
+        <label for="server-url" class="label">Endereço do Servidor Axiom</label>
+        <div class="input-row">
+          <input type="text" id="server-url" class="input" placeholder="http://localhost:3000" required>
+          <button type="button" class="btn-discover" id="btn-discover" title="Descobrir servidor automaticamente na rede local">
+            🔍 Auto-detectar
+          </button>
         </div>
       </div>
 
-      <div class="button-group">
-        <button type="submit" class="btn-save">💾 Salvar</button>
-        <button type="button" class="btn-reset" id="btn-reset">🔄 Restaurar Padrão</button>
+      <div class="tips-box">
+        <strong>Dica:</strong> Em vez de IP fixo, você pode usar o nome do PC na rede local, por exemplo:
+        <code>http://nome-do-pc.local:3000</code> ou <code>http://axiom.local:3000</code>.
       </div>
+    </div>
 
-      <div class="status-message" id="status-message"></div>
-    </form>
+    <!-- Preferences Card -->
+    <div class="card">
+      <span class="card-title">Preferências</span>
 
-    <div class="test-section">
-      <h3>🧪 Testar Conexão</h3>
-      <button type="button" class="btn-test" id="btn-test">Conectar ao Servidor</button>
-      <div class="status-message" id="test-status"></div>
+      <div class="toggle-row">
+        <span class="toggle-title">Condensar DANFE (Mercado Livre)</span>
+        <label class="switch" for="condense-danfe">
+          <input type="checkbox" id="condense-danfe" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button type="button" class="btn btn-secondary" id="btn-test">
+        ⚡ Testar Conexão
+      </button>
+      <button type="button" class="btn btn-primary" id="btn-save">
+        Salvar Configurações
+      </button>
+    </div>
+
+    <!-- Status Message -->
+    <div class="status-msg" id="status-msg">
+      <span class="spinner" id="status-spinner" style="display: none;"></span>
+      <span id="status-text"></span>
     </div>
   </div>
 

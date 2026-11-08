@@ -132,4 +132,35 @@ describe('Job Pipeline Integration', () => {
       expect(['PDF', 'ZPL']).toContain(childStatus?.inputFormat);
     }
   });
+
+  it('should process a Mercado Livre PDF label and condense DANFE onto label', async () => {
+    const mlPdfPath = path.resolve('data/jobs/5548f2a7-9c32-400f-94d3-d69d376d8a76/original/CD9EEB9AAE7D8EA19C226CBE9F0448F2_labels.pdf');
+    if (!fs.existsSync(mlPdfPath)) return;
+
+    const fileBuffer = fs.readFileSync(mlPdfPath);
+    const jobId = await jobManager.createJob({
+      originalName: 'CD9EEB9AAE7D8EA19C226CBE9F0448F2_labels.pdf',
+      fileBuffer,
+      destinationPrinter: 'TEST_PRINTER',
+      condenseDanfe: true,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const status = await jobManager.getJobStatus(jobId);
+    expect(status).not.toBeNull();
+    expect(status?.status).toBe('COMPLETED');
+    expect(status?.inputFormat).toBe('PDF');
+    expect(status?.outputFormat).toBe('PDF');
+
+    // Verify condensed output exists
+    const outputDir = path.join('./data-test/jobs', jobId, 'output');
+    const printedFile = path.join(outputDir, 'printed_label.pdf');
+    expect(fs.existsSync(printedFile)).toBe(true);
+
+    // Verify page count of output
+    const info = (await import('node:child_process')).execFileSync('pdfinfo', [printedFile], { encoding: 'utf-8' });
+    const pagesMatch = info.match(/Pages:\s+(\d+)/);
+    expect(Number(pagesMatch![1])).toBe(1);
+  });
 });
